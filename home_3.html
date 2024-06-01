@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Polyrhythm Generator</title>
+</head>
+<body>
+    <div>
+        <button onclick="playPolyrhythm()">Play Polyrhythm</button>
+        <button onclick="stopMusic()">Stop</button>
+    </div>
+
+    <!-- Load Tone.js from CDN -->
+    
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/15.0.4/Tone.js" integrity="sha512-uXz2Ei+QJ4i9e32kXNq+rX/MBgiEEn0wESna9ebpNFStqpfFGEiq1QRfqwXMBZMoU5ZRD3iqQp539jXNFTLlgQ==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+
+    <!-- Your script -->
+    <script>
+        function playPolyrhythm() {
+            Tone.start(); // Start audio context on user interaction
+
+            // Set the BPM
+            Tone.Transport.bpm.value = 90;
+
+            // Synthesizer to play notes
+            const synth = new Tone.Synth().toDestination();
+
+            // Define two different rhythms
+            const rhythm1 = new Tone.Loop((time) => {
+                // Play a note every two beats (half of the measure in 4/4 time)
+                synth.triggerAttackRelease("C4", "8n", time);
+            }, "2n"); // "2n" stands for half-note, which will be every two beats in a 4/4 measure at 90 BPM
+
+            const rhythm2 = new Tone.Loop((time) => {
+                // Play a note every two thirds of a beat (making 3 in the time 2 beats occur)
+                synth.triggerAttackRelease("E4", "8n", time);
+            }, "0:2"); // "0:2" is equivalent to a dotted quarter note, which will complete three cycles in the same time that two cycles of "2n" occur
+
+            rhythm1.start(0);
+            rhythm2.start(0);
+        }
+
+        function stopMusic() {
+            Tone.Transport.stop(); // Stop the Tone.js Transport
+            Tone.Transport.cancel(); // Cancel scheduled events
+        }
+    </script>
+</body>
+</html>

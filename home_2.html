@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Polyrhythm Metronome</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        .controls {
+            display: flex;
+            justify-content: space-between;
+            width: 100%;
+            margin-bottom: 20px;
+        }
+        label, select, input, button {
+            margin: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="controls">
+        <div>
+            <label for="left-time-signature">Left Time Signature:</label>
+            <select id="left-time-signature">
+                <option value="2/4">2/4</option>
+                <option value="3/4">3/4</option>
+                <option value="4/4" selected>4/4</option>
+            </select>
+        </div>
+        <div>
+            <label for="right-time-signature">Right Time Signature:</label>
+            <select id="right-time-signature">
+                <option value="2/4">2/4</option>
+                <option value="3/4">3/4</option>
+                <option value="5/4">5/4</option>
+            </select>
+        </div>
+    </div>
+    <div>
+        <label for="bpm-slider">BPM:</label>
+        <input type="range" id="bpm-slider" min="40" max="240" value="120">
+        <span id="bpm-display">120 BPM</span>
+    </div>
+    <button onclick="startMetronomes()">Start Metronomes</button>
+    <button onclick="stopMetronomes()">Stop Metronomes</button>
+    <script>
+        var audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        var timerIDLeft, timerIDRight;
+        var currentBPM = 120;
+        var beatsPerMeasureLeft = 4; // Default 4/4 time for left
+        var beatsPerMeasureRight = 4; // Default 4/4 time for right
+    
+        document.getElementById('bpm-slider').addEventListener('input', function() {
+            currentBPM = this.value;
+            document.getElementById('bpm-display').innerText = `${currentBPM} BPM`;
+            restartMetronomes();
+        });
+    
+        document.getElementById('left-time-signature').addEventListener('change', function() {
+            beatsPerMeasureLeft = parseInt(this.value.split('/')[0]);
+            if (timerIDLeft) {
+                restartMetronomes();
+            }
+        });
+    
+        document.getElementById('right-time-signature').addEventListener('change', function() {
+            beatsPerMeasureRight = parseInt(this.value.split('/')[0]);
+            if (timerIDRight) {
+                restartMetronomes();
+            }
+        });
+    
+        function playClick(beatNumber, side) {
+            var oscillator = audioContext.createOscillator();
+            oscillator.type = side === 'left' ? 'square' : 'sine';
+            oscillator.frequency.value = beatNumber % (side === 'left' ? beatsPerMeasureLeft : beatsPerMeasureRight) === 0 ? 1000 : 800;
+            oscillator.connect(audioContext.destination);
+            oscillator.start();
+            oscillator.stop(audioContext.currentTime + 0.1);
+        }
+    
+        function startMetronome(side) {
+            stopMetronome(side);
+            var currentBeat = 0;
+            var interval = 60 / currentBPM * 1000;
+            var beatsPerMeasure = side === 'left' ? beatsPerMeasureLeft : beatsPerMeasureRight;
+    
+            var timerID = setInterval(function() {
+                playClick(currentBeat, side);
+                currentBeat = (currentBeat + 1) % beatsPerMeasure;
+            }, interval);
+    
+            return timerID;
+        }
+    
+        function startMetronomes() {
+            timerIDLeft = startMetronome('left');
+            timerIDRight = startMetronome('right');
+        }
+    
+        function stopMetronome(side) {
+            if (side === 'left' && timerIDLeft) {
+                clearInterval(timerIDLeft);
+                timerIDLeft = null;
+            } else if (side === 'right' && timerIDRight) {
+                clearInterval(timerIDRight);
+                timerIDRight = null;
+            }
+        }
+    
+        function stopMetronomes() {
+            stopMetronome('left');
+            stopMetronome('right');
+        }
+    
+        function restartMetronomes() {
+            startMetronomes();
+        }
+    </script>
+    
+</body>
+</html>

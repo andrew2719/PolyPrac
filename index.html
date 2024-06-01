@@ -1,0 +1,22 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Interactive Metronome</title>
+</head>
+<body>
+    <label for="bpm">Set BPM:</label>
+    <input id="bpm" type="number" value="120" min="30" max="240"> <!-- Default BPM is 120 -->
+
+    <button id="startPolyrhythm">Start Polyrhythm (2:3)</button>
+    <button id="stopButton">Stop Metronome</button>
+
+    
+    
+    <!-- Include Tone.js from CDN -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/15.0.4/Tone.js" integrity="sha512-uXz2Ei+QJ4i9e32kXNq+rX/MBgiEEn0wESna9ebpNFStqpfFGEiq1QRfqwXMBZMoU5ZRD3iqQp539jXNFTLlgQ==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    <script src="metronome.js"></script>
+</body>
+</html>

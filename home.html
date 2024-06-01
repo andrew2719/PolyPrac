@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Polyrhythm Metronome</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            padding: 20px;
+        }
+        label, select, input, button {
+            margin: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div>
+        <label for="time-signature">Time Signature:</label>
+        <select id="time-signature">
+            <option value="2/4">2/4</option>
+            <option value="3/4">3/4</option>
+            <option value="4/4" selected>4/4</option>
+        </select>
+    </div>
+    <div>
+        <label for="bpm-slider">BPM:</label>
+        <input type="range" id="bpm-slider" min="40" max="240" value="120">
+        <span id="bpm-display">120 BPM</span>
+    </div>
+    <button onclick="startMetronome()">Start Metronome</button>
+    <button onclick="stopMetronome()">Stop Metronome</button>
+    <script>
+        var audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        var timerID;
+        var currentBPM = 120;
+        var beatsPerMeasure = 4; // Default 4/4 time
+
+        document.getElementById('bpm-slider').addEventListener('input', function() {
+            currentBPM = this.value;
+            document.getElementById('bpm-display').innerText = `${currentBPM} BPM`;
+            if (timerID) {
+                restartMetronome();
+            }
+        });
+
+        document.getElementById('time-signature').addEventListener('change', function() {
+            beatsPerMeasure = parseInt(this.value.split('/')[0]);
+            if (timerID) {
+                restartMetronome();
+            }
+        });
+
+        function playClick(beatNumber) {
+            var oscillator = audioContext.createOscillator();
+            oscillator.type = 'sine';
+            oscillator.frequency.value = beatNumber % beatsPerMeasure === 0 ? 1000 : 800; // Lower frequency on non-primary beats
+            oscillator.connect(audioContext.destination);
+            oscillator.start();
+            oscillator.stop(audioContext.currentTime + 0.1);
+        }
+
+        function startMetronome() {
+            stopMetronome();
+            var currentBeat = 0;
+            var interval = 60 / currentBPM * 1000;
+            timerID = setInterval(function() {
+                playClick(currentBeat);
+                currentBeat = (currentBeat + 1) % beatsPerMeasure;
+            }, interval);
+        }
+
+        function stopMetronome() {
+            if (timerID) {
+                clearInterval(timerID);
+                timerID = null;
+            }
+        }
+
+        function restartMetronome() {
+            startMetronome();
+        }
+    </script>
+</body>
+</html>
