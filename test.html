@@ -40,12 +40,16 @@
     </div>
     <button id="start-button">Start</button>
     <button id="stop-button">Stop</button>
+    <button id="toggle-mode-button">Toggle Mode</button>
 
     <div class="sequencer" id="sequencer1"></div>
     <div class="sequencer" id="sequencer2"></div>
 
     <script src="https://cdn.jsdelivr.net/npm/tone@14.8.33/build/Tone.min.js"></script>
     <script>
+        let isInteractiveMode = false;
+        let parts = [];
+
         document.getElementById('start-button').addEventListener('click', () => {
             const bpm = parseInt(document.getElementById('bpm').value);
             const beats1 = parseInt(document.getElementById('beats1').value);
@@ -103,44 +107,87 @@
                 sequencer2.appendChild(beat);
             }
 
-            // Function to schedule the beats
-            function scheduleBeats(beats, synth, sequencer, measureLength, offset = 0) {
-                const interval = measureLength / beats; // Calculate interval based on beats
-
-                for (let i = 0; i < beats; i++) {
-                    Tone.Transport.schedule((time) => {
-                        // Trigger the sound
-                        synth.triggerAttackRelease('C4', '8n', time);
-
-                        // Visual feedback
-                        Tone.Draw.schedule(() => {
-                            const beatElement = sequencer.children[(i + offset) % beats];
-                            beatElement.classList.add('active');
-                            setTimeout(() => {
-                                beatElement.classList.remove('active');
-                            }, Tone.Time('8n').toMilliseconds());
-                        }, time);
-                    }, interval * i);
-                }
-            }
-
             const measureLength = (60 / bpm) * 4; // Length of one measure in seconds
 
-            // Schedule the first rhythm (percussive)
-            scheduleBeats(beats1, percussiveSynth, sequencer1, measureLength);
+            // Function to schedule the visual beats using Tone.Part
+            function scheduleVisualBeats(beats, sequencer, measureLength) {
+                const interval = measureLength / beats; // Calculate interval based on beats
+                const part = new Tone.Part((time, value) => {
+                    // Visual feedback
+                    Tone.Draw.schedule(() => {
+                        const beatElement = sequencer.children[value];
+                        beatElement.classList.add('active');
+                        setTimeout(() => {
+                            beatElement.classList.remove('active');
+                        }, Tone.Time('8n').toMilliseconds());
+                    }, time);
+                }, Array.from({ length: beats }, (_, i) => [i * interval, i]));
 
-            // Schedule the second rhythm (metallic)
-            scheduleBeats(beats2, metallicSynth, sequencer2, measureLength);
+                part.loop = true;
+                part.loopEnd = measureLength;
+                part.start(0);
+
+                return part;
+            }
+
+            // Schedule the visual beats (percussive)
+            parts.push(scheduleVisualBeats(beats1, sequencer1, measureLength));
+
+            // Schedule the visual beats (metallic)
+            parts.push(scheduleVisualBeats(beats2, sequencer2, measureLength));
+
+            // Schedule the audio beats if not in interactive mode
+            if (!isInteractiveMode) {
+                parts.push(scheduleAudioBeats(beats1, percussiveSynth, measureLength));
+                parts.push(scheduleAudioBeats(beats2, metallicSynth, measureLength));
+            }
 
             // Start the transport
-            Tone.Transport.start();
+            Tone.Transport.start(Tone.now());
+
+            // Handle keyboard input
+            document.addEventListener('keydown', handleKeyDown);
+
+            function handleKeyDown(event) {
+                if (event.key === 'a' || event.key === 'A') {
+                    percussiveSynth.triggerAttackRelease('C4', '8n');
+                }
+                if (event.key === 'l' || event.key === 'L') {
+                    metallicSynth.triggerAttackRelease('C4', '8n');
+                }
+            }
         });
 
         document.getElementById('stop-button').addEventListener('click', () => {
             Tone.Transport.stop();
             Tone.Transport.cancel(); // Clear all scheduled events
+            parts.forEach(part => part.stop());
+            parts = [];
+            document.removeEventListener('keydown', handleKeyDown);
         });
+
+        document.getElementById('toggle-mode-button').addEventListener('click', () => {
+            isInteractiveMode = !isInteractiveMode;
+            if (isInteractiveMode) {
+                document.getElementById('toggle-mode-button').innerText = 'Switch to Original Mode';
+            } else {
+                document.getElementById('toggle-mode-button').innerText = 'Switch to Interactive Mode';
+            }
+        });
+
+        function scheduleAudioBeats(beats, synth, measureLength) {
+            const interval = measureLength / beats; // Calculate interval based on beats
+            const part = new Tone.Part((time, value) => {
+                // Trigger the sound
+                synth.triggerAttackRelease('C4', '8n', time);
+            }, Array.from({ length: beats }, (_, i) => [i * interval, i]));
+
+            part.loop = true;
+            part.loopEnd = measureLength;
+            part.start(0);
+
+            return part;
+        }
     </script>
 </body>
 </html>
-    

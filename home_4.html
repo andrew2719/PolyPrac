@@ -103,28 +103,29 @@
                 sequencer2.appendChild(beat);
             }
 
-            // Function to schedule the beats
-            function scheduleBeats(beats, synth, sequencer, measureLength, offset = 0) {
-                const interval = measureLength / beats; // Calculate interval based on beats
-
-                for (let i = 0; i < beats; i++) {
-                    Tone.Transport.schedule((time) => {
-                        // Trigger the sound
-                        synth.triggerAttackRelease('C4', '8n', time);
-
-                        // Visual feedback
-                        Tone.Draw.schedule(() => {
-                            const beatElement = sequencer.children[(i + offset) % beats];
-                            beatElement.classList.add('active');
-                            setTimeout(() => {
-                                beatElement.classList.remove('active');
-                            }, Tone.Time('8n').toMilliseconds());
-                        }, time);
-                    }, interval * i);
-                }
-            }
-
             const measureLength = (60 / bpm) * 4; // Length of one measure in seconds
+
+            // Function to schedule the beats using Tone.Part
+            function scheduleBeats(beats, synth, sequencer, measureLength) {
+                const interval = measureLength / beats; // Calculate interval based on beats
+                const part = new Tone.Part((time, value) => {
+                    // Trigger the sound
+                    synth.triggerAttackRelease('C4', '8n', time);
+
+                    // Visual feedback
+                    Tone.Draw.schedule(() => {
+                        const beatElement = sequencer.children[value];
+                        beatElement.classList.add('active');
+                        setTimeout(() => {
+                            beatElement.classList.remove('active');
+                        }, Tone.Time('8n').toMilliseconds());
+                    }, time);
+                }, Array.from({ length: beats }, (_, i) => [i * interval, i]));
+
+                part.loop = true;
+                part.loopEnd = measureLength;
+                part.start(0);
+            }
 
             // Schedule the first rhythm (percussive)
             scheduleBeats(beats1, percussiveSynth, sequencer1, measureLength);
@@ -133,7 +134,7 @@
             scheduleBeats(beats2, metallicSynth, sequencer2, measureLength);
 
             // Start the transport
-            Tone.Transport.start();
+            Tone.Transport.start(Tone.now());
         });
 
         document.getElementById('stop-button').addEventListener('click', () => {
@@ -143,4 +144,3 @@
     </script>
 </body>
 </html>
-    

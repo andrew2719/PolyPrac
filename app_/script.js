@@ -28,39 +28,47 @@ document.getElementById('start-button').addEventListener('click', () => {
     }).toDestination();
 
     // Create sequencers
-    const sequencerLeft = document.getElementById('sequencer-left');
-    const sequencerRight = document.getElementById('sequencer-right');
+    const measureLeft = document.getElementById('measure-left');
+    const measureRight = document.getElementById('measure-right');
+    const measureCombinedLeft = document.getElementById('measure-combined-left');
+    const measureCombinedRight = document.getElementById('measure-combined-right');
 
-    sequencerLeft.innerHTML = '';
-    sequencerRight.innerHTML = '';
+    measureLeft.innerHTML = '';
+    measureRight.innerHTML = '';
+    measureCombinedLeft.innerHTML = '';
+    measureCombinedRight.innerHTML = '';
 
-    for (let i = 0; i < beatsLeft; i++) {
-        const beat = document.createElement('div');
-        beat.classList.add('beat');
-        sequencerLeft.appendChild(beat);
-    }
-
-    for (let i = 0; i < beatsRight; i++) {
-        const beat = document.createElement('div');
-        beat.classList.add('beat');
-        sequencerRight.appendChild(beat);
-    }
+    createMeasure(beatsLeft, measureLeft);
+    createMeasure(beatsRight, measureRight);
+    createMeasure(beatsLeft, measureCombinedLeft);
+    createMeasure(beatsRight, measureCombinedRight);
 
     const measureLength = (60 / bpm) * 4; // Length of one measure in seconds
 
+    // Function to create the measure lines
+    function createMeasure(beats, measure) {
+        const interval = 100 / beats; // Calculate interval as percentage
+        for (let i = 0; i < beats; i++) {
+            const beat = document.createElement('div');
+            beat.classList.add('beat');
+            beat.style.left = `${i * interval}%`;
+            measure.appendChild(beat);
+        }
+    }
+
     // Function to schedule the visual beats using Tone.Part
-    function scheduleVisualBeats(beats, sequencer, measureLength) {
+    function scheduleVisualBeats(beats, measure, measureLength) {
         const interval = measureLength / beats;
         const part = new Tone.Part((time, value) => {
             // Visual feedback
             Tone.Draw.schedule(() => {
-                const beatElement = sequencer.children[value];
+                const beatElement = measure.children[value];
                 beatElement.classList.add('active');
                 setTimeout(() => {
                     beatElement.classList.remove('active');
                 }, Tone.Time('8n').toMilliseconds());
             }, time);
-        }, Array.from({ lengtah: beats }, (_, i) => [i * interval, i]));
+        }, Array.from({ length: beats }, (_, i) => [i * interval, i]));
 
         part.loop = true;
         part.loopEnd = measureLength;
@@ -85,10 +93,16 @@ document.getElementById('start-button').addEventListener('click', () => {
     }
 
     // Schedule the visual beats (left)
-    parts.push(scheduleVisualBeats(beatsLeft, sequencerLeft, measureLength));
+    parts.push(scheduleVisualBeats(beatsLeft, measureLeft, measureLength));
 
     // Schedule the visual beats (right)
-    parts.push(scheduleVisualBeats(beatsRight, sequencerRight, measureLength));
+    parts.push(scheduleVisualBeats(beatsRight, measureRight, measureLength));
+
+    // Schedule the visual beats (combined)
+    parts.push(scheduleVisualBeats(beatsLeft, measureCombinedLeft, measureLength));
+    parts.push(scheduleVisualBeats(beatsRight, measureCombinedRight, measureLength));
+
+
 
     // Schedule the audio beats if not in interactive mode
     if (!isInteractiveMode) {

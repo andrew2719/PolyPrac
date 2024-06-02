@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Polyrhythm Practice</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            background-color: #f4f4f4;
+        }
+        h1 {
+            margin-bottom: 20px;
+        }
+        .controls {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        .sequencer {
+            display: flex;
+            justify-content: center;
+            margin: 10px 0;
+        }
+        .beat {
+            width: 30px;
+            height: 30px;
+            border: 2px solid #000;
+            margin: 0 5px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background-color: #fff;
+            border-radius: 5px;
+            transition: background-color 0.1s;
+        }
+        .active {
+            background-color: yellow;
+        }
+        .button {
+            padding: 10px 20px;
+            font-size: 16px;
+            cursor: pointer;
+            border: none;
+            border-radius: 5px;
+            background-color: #007BFF;
+            color: white;
+        }
+        .button:hover {
+            background-color: #0056b3;
+        }
+        .button:active {
+            background-color: #003d80;
+        }
+    </style>
+</head>
+<body>
+    <h1>Polyrhythm Practice App</h1>
+    <div class="controls">
+        <div>
+            <label for="bpm">BPM:</label>
+            <input type="number" id="bpm" value="60">
+        </div>
+        <div>
+            <label for="beats1">First Rhythm (beats per measure):</label>
+            <input type="number" id="beats1" value="2">
+        </div>
+        <div>
+            <label for="beats2">Second Rhythm (beats per measure):</label>
+            <input type="number" id="beats2" value="3">
+        </div>
+    </div>
+    <div class="controls">
+        <button id="start-button" class="button">Start</button>
+        <button id="stop-button" class="button">Stop</button>
+        <button id="toggle-mode-button" class="button">Switch to Interactive Mode</button>
+    </div>
+
+    <div class="sequencer" id="sequencer1"></div>
+    <div class="sequencer" id="sequencer2"></div>
+
+    <script src="https://cdn.jsdelivr.net/npm/tone@14.8.33/build/Tone.min.js"></script>
+    <script>
+        let isInteractiveMode = false;
+        let parts = [];
+
+        document.getElementById('start-button').addEventListener('click', () => {
+            const bpm = parseInt(document.getElementById('bpm').value);
+            const beats1 = parseInt(document.getElementById('beats1').value);
+            const beats2 = parseInt(document.getElementById('beats2').value);
+
+            // Set the BPM
+            Tone.Transport.bpm.value = bpm;
+
+            // Clear previous events
+            Tone.Transport.cancel();
+
+            // Create different synths for sound generation
+            const percussiveSynth = new Tone.MembraneSynth({
+                oscillator: {
+                    type: 'sine'
+                },
+                envelope: {
+                    attack: 0.001,
+                    decay: 0.4,
+                    sustain: 0.01,
+                    release: 1.4,
+                    attackCurve: 'exponential'
+                }
+            }).toDestination();
+
+            const metallicSynth = new Tone.MetalSynth({
+                frequency: 200,
+                envelope: {
+                    attack: 0.001,
+                    decay: 1.4,
+                    release: 0.2
+                },
+                harmonicity: 5.1,
+                modulationIndex: 32,
+                resonance: 4000,
+                octaves: 1.5
+            }).toDestination();
+
+            // Create sequencers
+            const sequencer1 = document.getElementById('sequencer1');
+            const sequencer2 = document.getElementById('sequencer2');
+
+            sequencer1.innerHTML = '';
+            sequencer2.innerHTML = '';
+
+            for (let i = 0; i < beats1; i++) {
+                const beat = document.createElement('div');
+                beat.classList.add('beat');
+                sequencer1.appendChild(beat);
+            }
+
+            for (let i = 0; i < beats2; i++) {
+                const beat = document.createElement('div');
+                beat.classList.add('beat');
+                sequencer2.appendChild(beat);
+            }
+
+            const measureLength = (60 / bpm) * 4; // Length of one measure in seconds
+
+            // Function to schedule the visual beats using Tone.Part
+            function scheduleVisualBeats(beats, sequencer, measureLength) {
+                const interval = measureLength / beats; // Calculate interval based on beats
+                const part = new Tone.Part((time, value) => {
+                    // Visual feedback
+                    Tone.Draw.schedule(() => {
+                        const beatElement = sequencer.children[value];
+                        beatElement.classList.add('active');
+                        setTimeout(() => {
+                            beatElement.classList.remove('active');
+                        }, Tone.Time('8n').toMilliseconds());
+                    }, time);
+                }, Array.from({ length: beats }, (_, i) => [i * interval, i]));
+
+                part.loop = true;
+                part.loopEnd = measureLength;
+                part.start(0);
+
+                return part;
+            }
+
+            // Function to schedule the audio beats using Tone.Part
+            function scheduleAudioBeats(beats, synth, measureLength) {
+                const interval = measureLength / beats; // Calculate interval based on beats
+                const part = new Tone.Part((time, value) => {
+                    // Trigger the sound
+                    synth.triggerAttackRelease('C4', '8n', time);
+                }, Array.from({ length: beats }, (_, i) => [i * interval, i]));
+
+                part.loop = true;
+                part.loopEnd = measureLength;
+                part.start(0);
+
+                return part;
+            }
+
+            // Schedule the visual beats (percussive)
+            parts.push(scheduleVisualBeats(beats1, sequencer1, measureLength));
+
+            // Schedule the visual beats (metallic)
+            parts.push(scheduleVisualBeats(beats2, sequencer2, measureLength));
+
+            // Schedule the audio beats if not in interactive mode
+            if (!isInteractiveMode) {
+                parts.push(scheduleAudioBeats(beats1, percussiveSynth, measureLength));
+                parts.push(scheduleAudioBeats(beats2, metallicSynth, measureLength));
+            }
+
+            // Start the transport
+            Tone.Transport.start(Tone.now());
+
+            // Handle keyboard input
+            document.addEventListener('keydown', handleKeyDown);
+
+            function handleKeyDown(event) {
+                if (event.key === 'a' || event.key === 'A') {
+                    percussiveSynth.triggerAttackRelease('C4', '8n');
+                }
+                if (event.key === 'l' || event.key === 'L') {
+                    metallicSynth.triggerAttackRelease('C4', '8n');
+                }
+            }
+        });
+
+        document.getElementById('stop-button').addEventListener('click', () => {
+            Tone.Transport.stop();
+            Tone.Transport.cancel(); // Clear all scheduled events
+            parts.forEach(part => part.stop());
+            parts = [];
+            document.removeEventListener('keydown', handleKeyDown);
+        });
+
+        document.getElementById('toggle-mode-button').addEventListener('click', () => {
+            isInteractiveMode = !isInteractiveMode;
+            if (isInteractiveMode) {
+                document.getElementById('toggle-mode-button').innerText = 'Switch to Original Mode';
+            } else {
+                document.getElementById('toggle-mode-button').innerText = 'Switch to Interactive Mode';
+            }
+        });
+    </script>
+</body>
+</html>
