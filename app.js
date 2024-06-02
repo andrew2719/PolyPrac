@@ -1,23 +1,38 @@
 document.getElementById('playButton').addEventListener('click', async () => {
-    // Make sure audio context is resumed (needed for some browsers)
-    await Tone.start();
-    
+    await Tone.start();  // Ensure audio is started on a user interaction
     console.log('Audio is ready');
 
-    // Create a synth and connect it to the main output
-    const synth = new Tone.Synth().toDestination();
+    // Set the time signature to 3/4 and BPM to 120
+    Tone.Transport.timeSignature = [11, 4];
+    Tone.Transport.bpm.value = 120;
 
-    // Create a sequence of notes
-    const notes = ["C4", "E4", "G4", "C5"];
-    let index = 0;
-
-    // Play a note every half second
-    Tone.Transport.scheduleRepeat(time => {
-        if (index < notes.length) {
-            synth.triggerAttackRelease(notes[index], "8n", time);
-            index++;
+    // Create two synths, one for the downbeat and another for the remaining beats
+    const downbeatSynth = new Tone.Synth({
+        oscillator: {
+            type: 'triangle'  // A distinct sound for the downbeat
         }
-    }, "0.5");
+    }).toDestination();
+
+    const otherBeatSynth = new Tone.Synth({
+        oscillator: {
+            type: 'sawtooth'  // A different sound for the remaining beats
+        }
+    }).toDestination();
+
+    // Schedule the downbeat and the remaining beats
+    Tone.Transport.scheduleRepeat(time => {
+        // Play the downbeat on the first beat of each measure
+        downbeatSynth.triggerAttackRelease("C4", "4n", time);
+
+        // Play the remaining beats on the 2nd and 3rd beats of the measure
+        otherBeatSynth.triggerAttackRelease("E4", "4n", time + Tone.Time("4n").toSeconds());
+        otherBeatSynth.triggerAttackRelease("G4", "4n", time + Tone.Time("2n").toSeconds());
+    }, "1m");
+
+    document.getElementById('stopButton').addEventListener('click', () => {
+    Tone.Transport.stop();
+    console.log('Audio has stopped');
+});
 
     // Start the Transport
     Tone.Transport.start();

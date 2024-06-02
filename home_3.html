@@ -1,48 +1,93 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <title>Polyrhythm Generator</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Polyrhythm Practice</title>
 </head>
 <body>
+    <h1>Polyrhythm Practice App</h1>
     <div>
-        <button onclick="playPolyrhythm()">Play Polyrhythm</button>
-        <button onclick="stopMusic()">Stop</button>
+        <label for="bpm">BPM:</label>
+        <input type="number" id="bpm" value="60">
     </div>
-
-    <!-- Load Tone.js from CDN -->
-    
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/15.0.4/Tone.js" integrity="sha512-uXz2Ei+QJ4i9e32kXNq+rX/MBgiEEn0wESna9ebpNFStqpfFGEiq1QRfqwXMBZMoU5ZRD3iqQp539jXNFTLlgQ==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
-
-    <!-- Your script -->
+    <div>
+        <label for="beats1">First Rhythm (beats per measure):</label>
+        <input type="number" id="beats1" value="2">
+    </div>
+    <div>
+        <label for="beats2">Second Rhythm (beats per measure):</label>
+        <input type="number" id="beats2" value="11">
+    </div>
+    <button id="start-button">Start</button>
+    <button id="stop-button">Stop</button>
+    <script src="https://cdn.jsdelivr.net/npm/tone@14.8.33/build/Tone.min.js"></script>
     <script>
-        function playPolyrhythm() {
-            Tone.start(); // Start audio context on user interaction
+        document.getElementById('start-button').addEventListener('click', () => {
+            const bpm = parseInt(document.getElementById('bpm').value);
+            const beats1 = parseInt(document.getElementById('beats1').value);
+            const beats2 = parseInt(document.getElementById('beats2').value);
 
             // Set the BPM
-            Tone.Transport.bpm.value = 90;
+            Tone.Transport.bpm.value = bpm;
 
-            // Synthesizer to play notes
-            const synth = new Tone.Synth().toDestination();
+            // Clear previous events
+            Tone.Transport.cancel();
 
-            // Define two different rhythms
-            const rhythm1 = new Tone.Loop((time) => {
-                // Play a note every two beats (half of the measure in 4/4 time)
-                synth.triggerAttackRelease("C4", "8n", time);
-            }, "2n"); // "2n" stands for half-note, which will be every two beats in a 4/4 measure at 90 BPM
+            // Create different synths for sound generation
+            const percussiveSynth = new Tone.MembraneSynth({
+                oscillator: {
+                    type: 'sine'
+                },
+                envelope: {
+                    attack: 0.001,
+                    decay: 0.4,
+                    sustain: 0.01,
+                    release: 1.4,
+                    attackCurve: 'exponential'
+                }
+            }).toDestination();
 
-            const rhythm2 = new Tone.Loop((time) => {
-                // Play a note every two thirds of a beat (making 3 in the time 2 beats occur)
-                synth.triggerAttackRelease("E4", "8n", time);
-            }, "0:2"); // "0:2" is equivalent to a dotted quarter note, which will complete three cycles in the same time that two cycles of "2n" occur
+            const metallicSynth = new Tone.MetalSynth({
+                frequency: 200,
+                envelope: {
+                    attack: 0.001,
+                    decay: 1.4,
+                    release: 0.2
+                },
+                harmonicity: 5.1,
+                modulationIndex: 32,
+                resonance: 4000,
+                octaves: 1.5
+            }).toDestination();
 
-            rhythm1.start(0);
-            rhythm2.start(0);
-        }
+            // Function to schedule the beats
+            function scheduleBeats(beats, synth, measureLength) {
+                const interval = measureLength / beats; // Calculate interval based on beats
+                for (let i = 0; i < beats; i++) {
+                    Tone.Transport.scheduleRepeat((time) => {
+                        synth.triggerAttackRelease('C4', '8n', time);
+                        console.log(`Playing sound at time: ${time}`); // Debug log
+                    }, measureLength, i * interval);
+                }
+            }
 
-        function stopMusic() {
-            Tone.Transport.stop(); // Stop the Tone.js Transport
-            Tone.Transport.cancel(); // Cancel scheduled events
-        }
+            const measureLength = (60 / bpm) * 4; // Length of one measure in seconds
+
+            // Schedule the first rhythm (percussive)
+            scheduleBeats(beats1, percussiveSynth, measureLength);
+
+            // Schedule the second rhythm (metallic)
+            scheduleBeats(beats2, metallicSynth, measureLength);
+
+            // Start the transport
+            Tone.Transport.start();
+        });
+
+        document.getElementById('stop-button').addEventListener('click', () => {
+            Tone.Transport.stop();
+            Tone.Transport.cancel(); // Clear all scheduled events
+        });
     </script>
 </body>
 </html>
