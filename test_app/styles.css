@@ -78,28 +78,7 @@ h1 {
 }
 
 .measure .beat.right {
-    background-color: #e74c3c;
-}
-
-.measure.combined .beat.left {
-    height: 50%;
-    top: 0;
-}
-
-.measure.combined .beat.right {
-    height: 50%;
-    bottom: 0;
-}
-
-#playhead {
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 2px;
-    height: 100%;
-    background-color: #f1c40f;
-    z-index: 10;
-    pointer-events: none;
+    background-color: #8b9dc3;
 }
 
 .beat.active {
@@ -136,4 +115,12 @@ input[type="number"] {
     text-align: center;
     background-color: #2b2b2b;
     color: #e0e0e0;
+}
+
+.playhead {
+    height: 100%;
+    width: 2px;
+    position: absolute;
+    background-color: #f1c40f; /* Bright yellow for visibility */
+    z-index: 10; /* Make sure it's visible above the beats */
 }

@@ -1,5 +1,6 @@
 let isInteractiveMode = false;
 let parts = [];
+let keepUpdatingPlayhead = true; // Global variable to control the animation loop
 
 document.getElementById('start-button').addEventListener('click', () => {
     const bpm = parseInt(document.getElementById('bpm').value);
@@ -30,31 +31,83 @@ document.getElementById('start-button').addEventListener('click', () => {
     // Create sequencers
     const measureLeft = document.getElementById('measure-left');
     const measureRight = document.getElementById('measure-right');
-    const measureCombined = document.getElementById('measure-combined');
-    const playhead = document.getElementById('playhead');
+    const measureCombinedLeft = document.getElementById('measure-combined-left');
+    const measureCombinedRight = document.getElementById('measure-combined-right');
 
     measureLeft.innerHTML = '';
     measureRight.innerHTML = '';
-    measureCombined.innerHTML = '';
-    measureCombined.appendChild(playhead);
+    measureCombinedLeft.innerHTML = '';
+    measureCombinedRight.innerHTML = '';
 
-    createMeasure(beatsLeft, measureLeft, 'left');
-    createMeasure(beatsRight, measureRight, 'right');
-    createMeasure(beatsLeft, measureCombined, 'left');
-    createMeasure(beatsRight, measureCombined, 'right');
+    createMeasure(beatsLeft, measureLeft);
+    createMeasure(beatsRight, measureRight);
+    createMeasure(beatsLeft, measureCombinedLeft);
+    createMeasure(beatsRight, measureCombinedRight);
 
     const measureLength = (60 / bpm) * 4; // Length of one measure in seconds
 
     // Function to create the measure lines
-    function createMeasure(beats, measure, type) {
+    function createMeasure(beats, measure) {
         const interval = 100 / beats; // Calculate interval as percentage
         for (let i = 0; i < beats; i++) {
             const beat = document.createElement('div');
-            beat.classList.add('beat', type);
+            beat.classList.add('beat');
             beat.style.left = `${i * interval}%`;
             measure.appendChild(beat);
         }
+        // Create and append the playhead
+        const playhead = document.createElement('div');
+        playhead.classList.add('playhead');
+        measure.appendChild(playhead);
     }
+    
+    function updatePlayhead(measure, measureLength, startTime) {
+        const playhead = measure.querySelector('.playhead');
+        const update = () => {
+            if (!keepUpdatingPlayhead) {
+                return; // Stop the function if updating is halted
+            }
+            const elapsed = Tone.now() - startTime;
+            const percentage = (elapsed / measureLength) * 100;
+            if (percentage <= 100) {
+                playhead.style.left = `${percentage}%`;
+                requestAnimationFrame(update);
+            } else {
+                playhead.style.left = `0%`; // Reset for looping
+                startTime = Tone.now(); // Reset start time for the loop
+                requestAnimationFrame(update);
+            }
+        };
+        update();
+    }
+    
+    // Start the playhead movement when the transport starts
+    document.getElementById('start-button').addEventListener('click', () => {
+        keepUpdatingPlayhead = true; // Enable updating when starting
+        const startTime = Tone.now();
+        updatePlayhead(document.getElementById('measure-left'), measureLength, startTime);
+        updatePlayhead(document.getElementById('measure-right'), measureLength, startTime);
+        updatePlayhead(document.getElementById('measure-combined-left'), measureLength, startTime);
+        updatePlayhead(document.getElementById('measure-combined-right'), measureLength, startTime);
+    });
+
+    document.getElementById('stop-button').addEventListener('click', () => {
+        Tone.Transport.stop();
+        Tone.Transport.cancel(); // Clear all scheduled events
+        parts.forEach(part => part.stop());
+        parts = [];
+        keepUpdatingPlayhead = false; // Disable updating when stopped
+    
+        // Reset playhead positions to the start
+        document.querySelectorAll('.playhead').forEach(playhead => {
+            playhead.style.left = `0%`;
+        });
+    
+        document.removeEventListener('keydown', handleKeyDown);
+    });
+    
+    
+    
 
     // Function to schedule the visual beats using Tone.Part
     function scheduleVisualBeats(beats, measure, measureLength) {
@@ -66,7 +119,7 @@ document.getElementById('start-button').addEventListener('click', () => {
                 beatElement.classList.add('active');
                 setTimeout(() => {
                     beatElement.classList.remove('active');
-                }, 200); // Adjusted timing to ensure proper blinking
+                }, Tone.Time('8n').toMilliseconds());
             }, time);
         }, Array.from({ length: beats }, (_, i) => [i * interval, i]));
 
@@ -99,19 +152,10 @@ document.getElementById('start-button').addEventListener('click', () => {
     parts.push(scheduleVisualBeats(beatsRight, measureRight, measureLength));
 
     // Schedule the visual beats (combined)
-    parts.push(scheduleVisualBeats(beatsLeft, measureCombined, measureLength));
-    parts.push(scheduleVisualBeats(beatsRight, measureCombined, measureLength));
+    parts.push(scheduleVisualBeats(beatsLeft, measureCombinedLeft, measureLength));
+    parts.push(scheduleVisualBeats(beatsRight, measureCombinedRight, measureLength));
 
-    // Function to move the playhead
-    function movePlayhead() {
-        Tone.Transport.scheduleRepeat((time) => {
-            Tone.Draw.schedule(() => {
-                playhead.style.left = `${(time / measureLength) * 100}%`;
-            }, time);
-        }, '8n');
-    }
 
-    movePlayhead();
 
     // Schedule the audio beats if not in interactive mode
     if (!isInteractiveMode) {
